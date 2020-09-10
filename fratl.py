@@ -9,7 +9,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import time
 import re
 import tweepy
@@ -88,7 +88,7 @@ def scrape_tweets(api, search_words, date_since, numTweets):
     path = os.getcwd()
     filename = path + "\data\\" + to_csv_timestamp + "_fratl_tweets.csv"
     # Store dataframe in csv with creation date timestamp
-    db_tweets.sort_values("FRATL")
+    db_tweets = db_tweets.sort_values("FRATL")
     db_tweets.to_csv(filename, index=False)
 
     return db_tweets
@@ -295,11 +295,17 @@ if __name__ == "__main__":
             df = scrape_tweets(
                 api,
                 "#fratl",
-                "2020-09-10",
+                # "2020-09-10",
                 # datetime.today().strftime("%Y-%m-%d"),
+                # Using UTC means if we pass midnight in Aus, it will still be
+                # right date for France
+                datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 500,
             )
-            plot_fratl(df)
+            try:
+                plot_fratl(df)
+            except IndexError:
+                print("Plot failed: too few data")
         else:
             print("Authorization failed")
 
