@@ -233,33 +233,37 @@ def auth():
 
 def plot_fratl(df):
     """ Plot the pandas dataframe """
-    df.FRATL = pd.to_datetime(df.FRATL, format="%H:%M")
-    yr = date.today().year
-    mn = date.today().month
-    dy = date.today().day + 1  # assumes all stage finishes after midnight
-    df.FRATL = df.FRATL.apply(lambda dt: dt.replace(year=yr, day=dy, month=mn))
-    df = df.sort_values(by="FRATL", ascending=False)
-    df = df.reset_index(drop=True)  # re-index for plotting sorted
-    df.plot(kind="barh", y="FRATL")
-    fig = plt.gcf()
-    ax = plt.gca()
-    axes_buff = timedelta(hours=2)  # Time each side
-    mean_fratl = df.FRATL.mean()
-    ax.set_xlim(mean_fratl - axes_buff, mean_fratl + axes_buff)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
-    fig.autofmt_xdate()
-    plt.tick_params(left=False, labelleft=False)
-    plt.title(r"Unofficial #FRATL distribution")
-    ax.annotate(
-        "@PuffingColly",
-        xy=(0.78, 0.08),
-        xycoords="figure fraction",
-        horizontalalignment="left",
-        verticalalignment="top",
-        fontsize=8,
-    )
-    ax.get_legend().remove()
-    plt.show()
+    try:
+        df.FRATL = pd.to_datetime(df.FRATL, format="%H:%M")
+        yr = date.today().year
+        mn = date.today().month
+        dy = date.today().day + 1  # assumes all stage finishes after midnight
+        df.FRATL = df.FRATL.apply(lambda dt: dt.replace(year=yr, day=dy, month=mn))
+        df = df.sort_values(by="FRATL", ascending=False)
+        df = df.reset_index(drop=True)  # re-index for plotting sorted
+        df.plot(kind="barh", y="FRATL")
+        fig = plt.gcf()
+        ax = plt.gca()
+        axes_buff = timedelta(hours=2)  # Time each side
+        mean_fratl = df.FRATL.mean()
+        ax.set_xlim(mean_fratl - axes_buff, mean_fratl + axes_buff)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+        fig.autofmt_xdate()
+        plt.tick_params(left=False, labelleft=False)
+        plt.title(r"Unofficial #FRATL distribution")
+        ax.annotate(
+            "@PuffingColly",
+            xy=(0.78, 0.08),
+            xycoords="figure fraction",
+            horizontalalignment="left",
+            verticalalignment="top",
+            fontsize=8,
+        )
+        ax.get_legend().remove()
+        plt.show()
+
+    except IndexError:
+        print("Plot failed: too few data")
 
     return
 
@@ -272,15 +276,32 @@ def read_dataframe(file):
 
 
 def save_gsheet(df):
-    """ Saves a dataframe to a new spreadsheet """
+    """Saves a dataframe to a new spreadsheet
+    puffing.colly account
+    """
+
+    url = None
+    #   try:
+    print("Creating gsheet")
     gc = gspread.oauth()
     # Manually add the Stage number afterwards for now
-    ss = gc.create("FRATL_Stage_",100,6)
+    ss = gc.create("FRATL_Stage_")
     ws = ss.get_worksheet(0)
     # Needed for writing NaNs
     df.fillna("", inplace=True)
-    ws.update([df.columns.values.tolist()] + df.values.tolist()
-    url = r"https://docs.google.com/spreadsheets/d/{}".format(ss.id)
+    # Columns of type TimeStamp cannot be JSON serialised to GSheets
+    # Hardcoding column name which has time - not ideal
+    col_name = "FRATL"
+    df[col_name] = df[col_name].dt.strftime("%H:%M")
+    # Finally write the df
+    ws.update([df.columns.values.tolist()] + df.values.tolist())
+    ws.set_basic_filter(name=(r"A:E"))
+    url = "https://docs.google.com/spreadsheets/d/{}".format(ss.id)
+    print(url)
+
+    # except:
+    #     print("gsheet creation failed")
+
     return url
 
 
@@ -317,18 +338,8 @@ if __name__ == "__main__":
                 datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 500,
             )
-            # Plot results
-            try:
-                plot_fratl(df)
-            except IndexError:
-                print("Plot failed: too few data")
-            # Save spreadsheet to Google Sheets - puffing.colly account
-            try:
-                print("Creating gsheet")
-                url = save_gsheet(df)
-                print(url)
-            except:
-                print("gsheet creation failed")
+            plot_fratl(df)
+            url = save_gsheet(df)
         else:
             print("Authorization failed")
 
@@ -336,3 +347,4 @@ if __name__ == "__main__":
         print("Reading and plotting file: {}".format(args.read.name))
         df = read_dataframe(args.read.name)
         plot_fratl(df)
+        url = save_gsheet(df)
