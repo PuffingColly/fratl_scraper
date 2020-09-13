@@ -6,22 +6,23 @@ Scrapes twitter and reports FRATL predictions fro tweets.
 import argparse
 import json
 import os
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 from datetime import date, datetime, timedelta, timezone
 import time
 import re
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import tweepy
+import gspread
 
 
-def load_api_keys():
+def load_twitter_credentials():
     """ Loads twitter keys from pre-formed json file (store_twitter_api) """
     consumer_key = ""
     consumer_secret = ""
     access_key = ""
     access_secret = ""
-    with open("api.json") as json_file:
+    with open("twitter_credentials.json") as json_file:
         data = json.load(json_file)
         consumer_key = data["consumer_key"]
         consumer_secret = data["consumer_secret"]
@@ -31,10 +32,8 @@ def load_api_keys():
     return (consumer_key, consumer_secret, access_key, access_secret)
 
 
-def scrape_tweets(api, search_words, date_since, numTweets):
-    # Define a for-loop to generate tweets at regular intervals
-    # We cannot make large API call in one go. Hence, let's try T times
-
+def scrape_for_fratl(api, search_words, date_since, numTweets):
+    """ Scrapes tweets for FRATL """
     # Define a pandas dataframe to store the date:
     db_tweets = pd.DataFrame(
         columns=["username", "location", "created at (UTC)", "FRATL", "text"]
@@ -58,7 +57,7 @@ def scrape_tweets(api, search_words, date_since, numTweets):
         except AttributeError:  # Not a Retweet
             text = tweet.full_text
             try:
-                fratl = parse_tweet_for_time(text)
+                fratl = parse_for_fratl(text)
             except:
                 print("Parse error: {}".format(text))
             if fratl:
@@ -86,7 +85,7 @@ def scrape_tweets(api, search_words, date_since, numTweets):
     to_csv_timestamp = datetime.today().strftime("%Y%m%d_%H%M%S")
     # Define working path and filename
     path = os.getcwd()
-    filename = path + "\data\\" + to_csv_timestamp + "_fratl_tweets.csv"
+    filename = path + r"\data\\" + to_csv_timestamp + "_fratl_tweets.csv"
     # Store dataframe in csv with creation date timestamp
     db_tweets = db_tweets.sort_values("FRATL")
     db_tweets.to_csv(filename, index=False)
@@ -94,7 +93,7 @@ def scrape_tweets(api, search_words, date_since, numTweets):
     return db_tweets
 
 
-def parse_tweet_for_time(text):
+def parse_for_fratl(text):
     """Find the FRATL time from the tweet text
     Use regex to extract any times and timezone. https://regexr.com/5b5jh
     Convert to a datetime object and convert to AEST then return.
@@ -193,7 +192,7 @@ def test_times():
     ]
 
     for (text, t_str) in str_list:
-        time = parse_tweet_for_time(text)
+        time = parse_for_fratl(text)
         s = time.strftime("%H:%M")
         if s == t_str:
             print("Time = {} AEST. Pass".format(s))
@@ -206,7 +205,12 @@ def auth():
     Authenticate twitter account and return api.
     """
 
-    (consumer_key, consumer_secret, access_key, access_secret) = load_api_keys()
+    (
+        consumer_key,
+        consumer_secret,
+        access_key,
+        access_secret,
+    ) = load_twitter_credentials()
 
     # Authenticate to Twitter
     # Pass your twitter credentials to tweepy via its OAuthHandler
@@ -267,6 +271,19 @@ def read_dataframe(file):
     return df
 
 
+def save_gsheet(df):
+    """ Saves a dataframe to a new spreadsheet """
+    gc = gspread.oauth()
+    # Manually add the Stage number afterwards for now
+    ss = gc.create("FRATL_Stage_",100,6)
+    ws = ss.get_worksheet(0)
+    # Needed for writing NaNs
+    df.fillna("", inplace=True)
+    ws.update([df.columns.values.tolist()] + df.values.tolist()
+    url = r"https://docs.google.com/spreadsheets/d/{}".format(ss.id)
+    return url
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--test", help="Runs the tests", action="store_true")
@@ -292,20 +309,26 @@ if __name__ == "__main__":
         auth_ok, api = auth()
         if auth_ok:
             print("Scraping...")
-            df = scrape_tweets(
+            df = scrape_for_fratl(
                 api,
                 "#fratl",
-                # "2020-09-10",
-                # datetime.today().strftime("%Y-%m-%d"),
                 # Using UTC means if we pass midnight in Aus, it will still be
                 # right date for France
                 datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 500,
             )
+            # Plot results
             try:
                 plot_fratl(df)
             except IndexError:
                 print("Plot failed: too few data")
+            # Save spreadsheet to Google Sheets - puffing.colly account
+            try:
+                print("Creating gsheet")
+                url = save_gsheet(df)
+                print(url)
+            except:
+                print("gsheet creation failed")
         else:
             print("Authorization failed")
 
