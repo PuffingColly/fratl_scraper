@@ -67,6 +67,8 @@ def scrape_for_fratl(api, search_words, date_since, numTweets):
             # Add the variables to the empty list - ith_tweet:
             ith_tweet = [username, location, created_at, fratl_str, text]
             # Append to dataframe - db_tweets
+            # Note this is pretty bad for large dataframes
+            # https://stackoverflow.com/questions/10715965/add-one-row-to-pandas-dataframe
             db_tweets.loc[len(db_tweets)] = ith_tweet
 
         # increase counter - noTweets
@@ -275,32 +277,29 @@ def read_dataframe(file):
     return df
 
 
-def save_gsheet(df):
-    """Saves a dataframe to a new spreadsheet
-    puffing.colly account
+def save_gsheet(df, filename):
+    """
+    Saves a dataframe to a new spreadsheet using account with credentials
+    on the local system. No try-except loop so that any errors are reported
+    for easier debugging. Not totally user friendly!
     """
 
     url = None
-    #   try:
-    print("Creating gsheet")
     gc = gspread.oauth()
     # Manually add the Stage number afterwards for now
-    ss = gc.create("FRATL_Stage_")
+    ss = gc.create(filename)
     ws = ss.get_worksheet(0)
     # Needed for writing NaNs
     df.fillna("", inplace=True)
     # Columns of type TimeStamp cannot be JSON serialised to GSheets
     # Hardcoding column name which has time - not ideal
-    col_name = "FRATL"
-    df[col_name] = df[col_name].dt.strftime("%H:%M")
+    col_name = "created at (UTC)"
+    df[col_name] = df[col_name].astype(str)
     # Finally write the df
     ws.update([df.columns.values.tolist()] + df.values.tolist())
     ws.set_basic_filter(name=(r"A:E"))
     url = "https://docs.google.com/spreadsheets/d/{}".format(ss.id)
     print(url)
-
-    # except:
-    #     print("gsheet creation failed")
 
     return url
 
@@ -309,6 +308,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--test", help="Runs the tests", action="store_true")
     parser.add_argument("-s", "--scrape", help="Scrape tweets", action="store_true")
+    parser.add_argument(
+        "-p", "--plot", help="Plot fratl distribution", action="store_true"
+    )
     parser.add_argument(
         "-r",
         "--read",
@@ -319,10 +321,22 @@ if __name__ == "__main__":
         # const is default when nothing is passed
         const=r".\data\20200906_232619_fratl_tweets.csv",
     )
+    parser.add_argument(
+        "-g",
+        "--gsheet",
+        help="Create GSheet file",
+        nargs="?",
+        type=str,
+        const=r"FRATL_Stage_",
+    )
     args = parser.parse_args()
 
+    ####### Start of main code #######
+
+    df = None
+
     if args.test:
-        print("Running test")
+        print("Running test...")
         test_times()
 
     if args.scrape:
@@ -338,13 +352,17 @@ if __name__ == "__main__":
                 datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 500,
             )
-            plot_fratl(df)
-            url = save_gsheet(df)
         else:
             print("Authorization failed")
 
     if args.read is not None:
-        print("Reading and plotting file: {}".format(args.read.name))
+        print("Reading file: {}".format(args.read.name))
         df = read_dataframe(args.read.name)
+
+    if args.plot and df is not None:
+        print("Plotting dataframe...")
         plot_fratl(df)
-        url = save_gsheet(df)
+
+    if args.gsheet is not None and df is not None:
+        print("Creating gsheet...")
+        url = save_gsheet(df, args.gsheet)
