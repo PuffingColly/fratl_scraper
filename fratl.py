@@ -331,7 +331,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    ####### Start of main code #######
+    ####### Start of main code ###########
 
     df = None
 
