@@ -34,14 +34,14 @@ def load_twitter_credentials():
 
 def scrape_for_fratl(api, search_words, date_since, numTweets):
     """ Scrapes tweets for FRATL """
-    # Define a pandas dataframe to store the date:
-    db_tweets = pd.DataFrame(
-        columns=["username", "location", "created at (UTC)", "FRATL", "text"]
-    )
+    # Define a pandas dataframe to store the date, using these columns:
+    col_lbls = ["username", "location", "created at (UTC)", "FRATL", "text"]
+    # Use a list of dictionaries to create the dataframe as it is quicker:
+    # https://stackoverflow.com/questions/10715965/add-one-row-to-pandas-dataframe
 
     # Time execution
     start_run = time.time()
-    noTweets = 0
+    tweet_list = []  # list of dictionaries
     # Collect tweets using the Cursor object
     for tweet in tweepy.Cursor(
         api.search, q=search_words, lang="en", since=date_since, tweet_mode="extended"
@@ -64,21 +64,19 @@ def scrape_for_fratl(api, search_words, date_since, numTweets):
                 fratl_str = fratl.strftime("%H:%M")
 
         if not is_retweet and fratl_str != "DNS":
-            # Add the variables to the empty list - ith_tweet:
-            ith_tweet = [username, location, created_at, fratl_str, text]
-            # Append to dataframe - db_tweets
-            # Note this is pretty bad for large dataframes
-            # https://stackoverflow.com/questions/10715965/add-one-row-to-pandas-dataframe
-            db_tweets.loc[len(db_tweets)] = ith_tweet
+            # Add the variables to the empty list
+            tweet_data = [username, location, created_at, fratl_str, text]
+            # Zip lists to create dictionary and add to list
+            tweet_list.append(dict(zip(col_lbls, tweet_data)))
 
-        # increase counter - noTweets
-        noTweets += 1
+    # Now assign tweet list of dictionaries into dataframe
+    db_tweets = pd.DataFrame(tweet_list, columns=col_lbls)
 
     # Run ended:
     end_run = time.time()
     duration_run = round((end_run - start_run) / 60, 2)
 
-    print("no. of tweets scraped is {}".format(noTweets))
+    print("no. of tweets scraped is {}".format(len(tweet_list)))
     print("time taken is {} mins".format(duration_run))
 
     # Once all runs have completed, save them to a single csv file:
@@ -89,7 +87,7 @@ def scrape_for_fratl(api, search_words, date_since, numTweets):
     path = os.getcwd()
     filename = path + r"\data\\" + to_csv_timestamp + "_fratl_tweets.csv"
     # Store dataframe in csv with creation date timestamp
-    db_tweets = db_tweets.sort_values("FRATL")
+    db_tweets = db_tweets.sort_values(col_lbls[2])
     db_tweets.to_csv(filename, index=False)
 
     return db_tweets
@@ -122,7 +120,17 @@ def parse_for_fratl(text):
             elif time_str[0:2] == "11":  # assume pm
                 time_str = time_str.replace("11", "23", 1)
             if not time_str[-2:] == "km":  # ensure not a distance
-                time = datetime.strptime(time_str, "%H:%M")
+                # In case of seconds or other strange artefacts
+                try:
+                    time = datetime.strptime(time_str, "%H:%M")
+                except ValueError as v:
+                    if len(v.args) > 0 and v.args[0].startswith(
+                        "unconverted data remains: "
+                    ):
+                        time_str = time_str[: -(len(v.args[0]) - 26)]
+                        time = datetime.strptime(time_str, "%H:%M")
+                    else:
+                        raise
 
     zone = re.search(zone_regexpr, text, re.IGNORECASE)
     if zone and time:
@@ -141,7 +149,11 @@ def test_times():
     """
 
     str_list = [
-        ("#fratl of 135am AEST and #BridieBingo at 29km thanks #couchpeloton", "01:35"),
+        ("#fratl of 1:16:37 tonight please and thank you @sophoife", "01:16"),
+        (
+            "#fratl of 135am AEST and #BridieBingo at 29km thanks #couchpeloton",
+            "01:35",
+        ),
         ("1259 #FRATL for me please #couchpeloton", "00:59"),
         ("#fratl 12:24 #BridieBingo 24k #couchpeloton #sbstdf", "00:24"),
         ("1.00 for #fratl tonight thanks scoots and team", "01:00"),
@@ -293,8 +305,7 @@ def save_gsheet(df, filename):
     df.fillna("", inplace=True)
     # Columns of type TimeStamp cannot be JSON serialised to GSheets
     # Hardcoding column name which has time - not ideal
-    col_name = "created at (UTC)"
-    df[col_name] = df[col_name].astype(str)
+    df = df.astype({"created at (UTC)": "str", "FRATL": "str"})
     # Finally write the df
     ws.update([df.columns.values.tolist()] + df.values.tolist())
     ws.set_basic_filter(name=(r"A:E"))
