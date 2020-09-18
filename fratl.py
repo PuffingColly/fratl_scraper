@@ -112,6 +112,8 @@ def parse_for_fratl(text):
             if no_digits == 3:
                 time_str = "0" + time_str
             time_str = time_str[:2] + ":" + time_str[2:]
+        if time_str.count(":") == 2:  # Dump seconds
+            time_str = time_str[:-3]
         if time_str[-2:] == "am" or time_str[-2:] == "pm":  # 12-hour clock
             time = datetime.strptime(time_str, "%I:%M%p")
         else:  # 24 hour clock
@@ -120,17 +122,7 @@ def parse_for_fratl(text):
             elif time_str[0:2] == "11":  # assume pm
                 time_str = time_str.replace("11", "23", 1)
             if not time_str[-2:] == "km":  # ensure not a distance
-                # In case of seconds or other strange artefacts
-                try:
-                    time = datetime.strptime(time_str, "%H:%M")
-                except ValueError as v:
-                    if len(v.args) > 0 and v.args[0].startswith(
-                        "unconverted data remains: "
-                    ):
-                        time_str = time_str[: -(len(v.args[0]) - 26)]
-                        time = datetime.strptime(time_str, "%H:%M")
-                    else:
-                        raise
+                time = datetime.strptime(time_str, "%H:%M")
 
     zone = re.search(zone_regexpr, text, re.IGNORECASE)
     if zone and time:
@@ -212,6 +204,8 @@ def test_times():
             print("Time = {} AEST. Pass".format(s))
         else:
             print("Time = {} AEST. Fail: {} | {}".format(s, t_str, text))
+
+    return str_list
 
 
 def auth():
@@ -298,8 +292,8 @@ def save_gsheet(df, filename):
 
     url = None
     gc = gspread.oauth()
-    # Manually add the Stage number afterwards for now
     ss = gc.create(filename)
+    ss.share(value=None, perm_type="anyone", role="reader")
     ws = ss.get_worksheet(0)
     # Needed for writing NaNs
     df.fillna("", inplace=True)
