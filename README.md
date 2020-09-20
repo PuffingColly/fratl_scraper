@@ -1,7 +1,7 @@
 # Introduction
 A tweet scraper for *#fratl* times for the *#couchpeloton* during the Tour de France watching *#sbstdf.* These hashtags mean:
 - **#FRATL**: First Rider Across The Line; the time that the Stage winner wins. Experts conduct multiple pages of complex calculations, taking into account the stage length, gradients, and wind conditions. Mostly, we guess. 
-* **#couchpeloton**: The Twitterati of Australian cycling fans who come together virtually to share in a love of *#toursnacks*, *#tourdogs*, *#tourcats*, *#vache*, *#trolldj* and #chateaus. We also like butter and cheese.
+* **#couchpeloton**: The Twitterati of Australian cycling fans who come together virtually to share in a love of *#toursnacks*, *#tourdogs*, *#tourcats*, *#vache*, *#trolldj* and *#chateaus*. We also like butter and cheese.
 - **#sbstdf**: SBS is the Tour de France broadcaster for Australia and maintains a menagerie of characters which it wheels out each year for the *#couchpeloton*'s delight.
 
 # Usage
