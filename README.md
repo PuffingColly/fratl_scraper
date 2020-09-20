@@ -4,6 +4,9 @@ A tweet scraper for *#fratl* times for the *#couchpeloton* during the Tour de Fr
 * **#couchpeloton**: The Twitterati of Australian cycling fans who come together virtually to share in a love of *#toursnacks*, *#tourdogs*, *#tourcats*, *#vache*, *#trolldj* and *#chateaus*. We also like butter and cheese.
 - **#sbstdf**: SBS is the Tour de France broadcaster for Australia and maintains a menagerie of characters which it wheels out each year for the *#couchpeloton*'s delight.
 
+# Acknowledgements
+*#FRATL* was introduced by [@evilscootus](https://twitter.com/evilscootus) who is its [BDFL](https://en.wikipedia.org/wiki/Benevolent_dictator_for_life). For the 2020 tour, [@sophoife](https://twitter.com/sophoife) took on the arduous task and introduced some nice new twists.
+
 # Usage
 
 ## About
