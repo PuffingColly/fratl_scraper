@@ -15,17 +15,17 @@ The script should be executed just after the cut-off time for the stage underway
 
 Execute as:
 
-'''python
+```python
 python fratl.py [arguments]
-'''
+```
 
 The `[arguments]` are explained below.
 
 For my own memory, on `Neovim` in development, I use:
 
-'''
-:terminal ipython % -i -- -s -p -g "FRATL_Stage_20(TT)"
-'''
+```bash
+:terminal ipython % -i -- -s -p -g "FRATL_Stage_21"
+```
 
 ## Arguments
 `-h` or `--help`
@@ -47,9 +47,9 @@ Creates a horizontal bar plot of the sorted scrapped *#FRATL* time estimates in 
 `-r` or `--read`
 For re-plotting or other purposes, reads in a `csv` file rather than scraping tweets to get *#FRATL* data with which to work. Defaults to a hard-coded `csv` file. For example, to plot the *#FRATL* times from the file, use as:
 
-'''python
+```python
 python fratl.py -r "Filename.csv" -p
-'''
+```
 
 `-g` or `--gsheet`
 Exports the scrapped or read *#FRATL*s to a newly created Google Sheet and sets the sharing of that sheet to public. The new sheet's URL is output to the command line.
@@ -63,10 +63,10 @@ Only tweets from the last 24 hours are parsed, as measured from the time of scri
 
 # To do
 Suggestions welcome, but obvious ones are:
-- [] Improve the documentation and credentials instructions!
-- [] Move the test tweets and human-read correct answers to a local `csv`.
-- [] Include Time Trial stage finish time predictions (`%M:%S`).
-- [] Include *#BridieBingo* (add parser for `XX.Xkm` - reasonably straightforward). 
-- [] Option to write to existing Google Sheet by adding sheet.
-- [] Massive expansion would be to track users' *#FRATL* predictions throughout the whole race and report accuracies and report cumulative accuracies
+- [ ] Improve the documentation and credentials instructions!
+- [ ] Move the test tweets and human-read correct answers to a local `csv`.
+- [ ] Include Time Trial stage finish time predictions (`%M:%S`).
+- [ ] Include *#BridieBingo* (add parser for `XX.Xkm` - reasonably straightforward). 
+- [ ] Option to write to existing Google Sheet by adding sheet.
+- [ ] Massive expansion would be to track users' *#FRATL* predictions throughout the whole race and report accuracies and report cumulative accuracies
 
